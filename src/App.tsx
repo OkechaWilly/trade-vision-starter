@@ -13,6 +13,7 @@ import Metrics from "./pages/Metrics";
 import Charts from "./pages/Charts";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
+import Layout from "./components/Layout";
 import { ProtectedRoute } from "./components/custom/ProtectedRoute";
 import { AuthProvider } from "./context/AuthContext";
 
@@ -25,65 +26,32 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-       <Routes>
-  {/* Public routes */}
-  <Route path="/" element={<Index />} />
-  <Route path="/login" element={<Login />} />
-  <Route path="/signup" element={<Signup />} />
+          <Routes>
+            {/* Public routes */}
+            <Route path="/" element={<Index />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
 
-  {/* Protected routes */}
-  <Route
-    path="/dashboard"
-    element={
-      <ProtectedRoute>
-        <Dashboard />
-      </ProtectedRoute>
-    }
-  />
-  <Route
-    path="/trades"
-    element={
-      <ProtectedRoute>
-        <Trades />
-      </ProtectedRoute>
-    }
-  />
-  <Route
-    path="/metrics"
-    element={
-      <ProtectedRoute>
-        <Metrics />
-      </ProtectedRoute>
-    }
-  />
-  <Route
-    path="/charts"
-    element={
-      <ProtectedRoute>
-        <Charts />
-      </ProtectedRoute>
-    }
-  />
-  <Route
-    path="/reports"
-    element={
-      <ProtectedRoute>
-        <Reports />
-      </ProtectedRoute>
-    }
-  />
-  <Route
-    path="/settings"
-    element={
-      <ProtectedRoute>
-        <Settings />
-      </ProtectedRoute>
-    }
-  />
+            {/* Protected routes with Layout */}
+            <Route
+              path="/*"
+              element={
+                <ProtectedRoute>
+                  <Layout />
+                </ProtectedRoute>
+              }
+            >
+              <Route path="dashboard" element={<Dashboard />} />
+              <Route path="trades" element={<Trades />} />
+              <Route path="metrics" element={<Metrics />} />
+              <Route path="charts" element={<Charts />} />
+              <Route path="reports" element={<Reports />} />
+              <Route path="settings" element={<Settings />} />
+            </Route>
 
-  {/* Fallback */}
-  <Route path="*" element={<NotFound />} />
-</Routes>
+            {/* Fallback */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
