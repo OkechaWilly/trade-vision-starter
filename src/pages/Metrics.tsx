@@ -1,18 +1,48 @@
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/lib/supabaseClient";
+import { useAuth } from "@/context/AuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { TrendingUp, TrendingDown, DollarSign, Target, Calendar, BarChart3 } from "lucide-react";
 
+interface Trade {
+  pnl: number;
+  rr: number;
+  date: string;
+}
+
 const Metrics = () => {
-  // Placeholder data - will be replaced with Supabase aggregated data
+  const { user } = useAuth();
+
+  const { data: trades = [], isLoading } = useQuery({
+    queryKey: ["trades", user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("trades")
+        .select("pnl, rr, date")
+        .eq("user_id", user?.id);
+
+      if (error) throw error;
+      return data as Trade[];
+    },
+    enabled: !!user?.id,
+  });
+
   const metrics = {
-    totalTrades: 0,
-    winRate: 0,
-    totalPnL: 0,
-    averageWin: 0,
-    averageLoss: 0,
-    profitFactor: 0,
-    maxDrawdown: 0,
-    activeDays: 0,
+    totalTrades: trades.length,
+    winRate: trades.length > 0 ? (trades.filter(t => t.pnl > 0).length / trades.length) * 100 : 0,
+    totalPnL: trades.reduce((sum, t) => sum + t.pnl, 0),
+    averageWin: trades.filter(t => t.pnl > 0).length > 0 
+      ? trades.filter(t => t.pnl > 0).reduce((sum, t) => sum + t.pnl, 0) / trades.filter(t => t.pnl > 0).length 
+      : 0,
+    averageLoss: trades.filter(t => t.pnl < 0).length > 0
+      ? Math.abs(trades.filter(t => t.pnl < 0).reduce((sum, t) => sum + t.pnl, 0) / trades.filter(t => t.pnl < 0).length)
+      : 0,
+    profitFactor: trades.filter(t => t.pnl < 0).length > 0
+      ? Math.abs(trades.filter(t => t.pnl > 0).reduce((sum, t) => sum + t.pnl, 0) / trades.filter(t => t.pnl < 0).reduce((sum, t) => sum + t.pnl, 0))
+      : trades.filter(t => t.pnl > 0).length > 0 ? Infinity : 0,
+    maxDrawdown: 0, // Would need more complex calculation
+    activeDays: new Set(trades.map(t => t.date.split('T')[0])).size,
   };
 
   const metricCards = [
@@ -69,27 +99,35 @@ const Metrics = () => {
         </p>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
-        {metricCards.map((metric) => {
-          const Icon = metric.icon;
-          return (
-            <Card key={metric.title}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  {metric.title}
-                </CardTitle>
-                <Icon className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{metric.value}</div>
-                <p className="text-xs text-muted-foreground">
-                  {metric.description}
-                </p>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
+      {isLoading ? (
+        <div className="text-center py-8">
+          <p className="text-muted-foreground">Loading metrics...</p>
+        </div>
+      ) : (
+        <>
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
+            {metricCards.map((metric) => {
+              const Icon = metric.icon;
+              return (
+                <Card key={metric.title}>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">
+                      {metric.title}
+                    </CardTitle>
+                    <Icon className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{metric.value}</div>
+                    <p className="text-xs text-muted-foreground">
+                      {metric.description}
+                    </p>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </>
+      )}
 
       <div className="grid gap-6 md:grid-cols-2">
         <Card>

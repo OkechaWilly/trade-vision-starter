@@ -65,6 +65,19 @@ const Settings = () => {
               </p>
             </div>
             <div className="grid gap-2">
+              <Label htmlFor="user-id">User ID</Label>
+              <Input
+                id="user-id"
+                type="text"
+                value={user?.id || ""}
+                disabled
+                className="bg-muted font-mono text-sm"
+              />
+              <p className="text-xs text-muted-foreground">
+                Your unique user identifier in the system.
+              </p>
+            </div>
+            <div className="grid gap-2">
               <Label htmlFor="username">Display Name</Label>
               <Input
                 id="username"
