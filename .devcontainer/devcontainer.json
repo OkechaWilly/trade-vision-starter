@@ -1,0 +1,14 @@
+{
+  "name": "JournalIQ Dev Container",
+  "image": "mcr.microsoft.com/devcontainers/typescript-node:20-bullseye",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "esbenp.prettier-vscode",
+        "dbaeumer.vscode-eslint",
+        "bradlc.vscode-tailwindcss"
+      ]
+    }
+  },
+  "postCreateCommand": "npm install"
+}
