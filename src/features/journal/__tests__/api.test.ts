@@ -36,6 +36,7 @@ describe('JournalAPI', () => {
     delete: vi.fn().mockReturnThis(),
     or: vi.fn().mockReturnThis(),
     contains: vi.fn().mockReturnThis(),
+    range: vi.fn().mockReturnThis(),
   };
 
   beforeEach(() => {
@@ -155,6 +156,72 @@ describe('JournalAPI', () => {
 
       expect(mockChain.contains).toHaveBeenCalledWith('tags', [tag]);
       expect(result).toEqual([mockEntry]);
+    });
+  });
+
+  describe('getPaginatedEntries', () => {
+    it('should return paginated entries with correct metadata', async () => {
+      const mockPaginatedData = {
+        data: [mockEntry],
+        error: null,
+        count: 25
+      };
+      mockChain.range.mockResolvedValue(mockPaginatedData);
+
+      const result = await JournalAPI.getPaginatedEntries(mockUserId, { page: 2, pageSize: 10 });
+
+      expect(mockSupabase.from).toHaveBeenCalledWith('journal_entries');
+      expect(mockChain.select).toHaveBeenCalledWith('*', { count: 'exact' });
+      expect(mockChain.eq).toHaveBeenCalledWith('user_id', mockUserId);
+      expect(mockChain.order).toHaveBeenCalledWith('created_at', { ascending: false });
+      expect(mockChain.range).toHaveBeenCalledWith(10, 19); // page 2, pageSize 10
+      expect(result).toEqual({
+        data: [mockEntry],
+        count: 25,
+        page: 2,
+        pageSize: 10,
+        totalPages: 3
+      });
+    });
+
+    it('should handle default pagination parameters', async () => {
+      const mockPaginatedData = {
+        data: [mockEntry],
+        error: null,
+        count: 5
+      };
+      mockChain.range.mockResolvedValue(mockPaginatedData);
+
+      const result = await JournalAPI.getPaginatedEntries(mockUserId);
+
+      expect(mockChain.range).toHaveBeenCalledWith(0, 9); // default page 1, pageSize 10
+      expect(result.page).toBe(1);
+      expect(result.pageSize).toBe(10);
+      expect(result.totalPages).toBe(1);
+    });
+  });
+
+  describe('validateAndCreateEntry', () => {
+    it('should validate and create entry', async () => {
+      const validEntry = {
+        user_id: mockUserId,
+        content: 'This is a valid journal entry with enough content',
+        mood: 'happy' as const,
+        tags: ['test']
+      };
+
+      // Mock the dynamic import
+      vi.doMock('../schema', () => ({
+        entrySchema: {
+          parse: vi.fn().mockReturnValue(validEntry)
+        }
+      }));
+
+      mockChain.single.mockResolvedValue({ data: mockEntry, error: null });
+
+      const result = await JournalAPI.validateAndCreateEntry(validEntry);
+
+      expect(result).toEqual(mockEntry);
     });
   });
 });

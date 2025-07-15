@@ -123,5 +123,50 @@ export const JournalAPI = {
 
     if (error) throw error;
     return data as JournalEntry[];
+  },
+
+  /**
+   * Get paginated journal entries for a user
+   */
+  getPaginatedEntries: async (
+    userId: string,
+    { page = 1, pageSize = 10 }: { page?: number; pageSize?: number } = {}
+  ) => {
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+
+    const { data, error, count } = await supabase
+      .from('journal_entries')
+      .select('*', { count: 'exact' })
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .range(from, to);
+
+    if (error) throw error;
+    return {
+      data: data as JournalEntry[],
+      count: count || 0,
+      page,
+      pageSize,
+      totalPages: Math.ceil((count || 0) / pageSize)
+    };
+  },
+
+  /**
+   * Create a new journal entry with validation
+   */
+  validateAndCreateEntry: async (entry: unknown) => {
+    const { entrySchema } = await import('./schema');
+    const parsed = entrySchema.parse(entry);
+    return JournalAPI.createEntry(parsed);
+  },
+
+  /**
+   * Update an existing journal entry with validation
+   */
+  validateAndUpdateEntry: async (id: string, updates: unknown) => {
+    const { updateEntrySchema } = await import('./schema');
+    const parsed = updateEntrySchema.parse(updates);
+    return JournalAPI.updateEntry(id, parsed);
   }
 };

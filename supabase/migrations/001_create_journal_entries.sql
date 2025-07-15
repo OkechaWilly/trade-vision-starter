@@ -31,6 +31,8 @@ CREATE INDEX journal_entries_user_id_idx ON journal_entries(user_id);
 CREATE INDEX journal_entries_created_at_idx ON journal_entries(created_at);
 CREATE INDEX journal_entries_mood_idx ON journal_entries(mood);
 CREATE INDEX journal_entries_tags_idx ON journal_entries USING GIN(tags);
+CREATE INDEX idx_journal_user_mood ON journal_entries(user_id, mood);
+CREATE INDEX idx_journal_tags ON journal_entries USING GIN(tags);
 
 -- Add trigger to automatically update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()

@@ -136,3 +136,78 @@ export const useJournalEntriesByTag = (tag: string) => {
     enabled: !!user?.id && !!tag,
   });
 };
+
+/**
+ * Hook for paginated journal entries
+ */
+export const usePaginatedJournalEntries = (
+  page: number = 1,
+  pageSize: number = 10
+) => {
+  const { user } = useAuth();
+  
+  return useQuery({
+    queryKey: ['journal-entries-paginated', user?.id, page, pageSize],
+    queryFn: () => JournalAPI.getPaginatedEntries(user!.id, { page, pageSize }),
+    enabled: !!user?.id,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+};
+
+/**
+ * Hook for creating journal entry with validation
+ */
+export const useCreateValidatedJournalEntry = () => {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (entry: unknown) => JournalAPI.validateAndCreateEntry(entry),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.entries(user!.id) });
+      queryClient.invalidateQueries({ queryKey: ['journal-entries-paginated', user!.id] });
+      toast({
+        title: "Success",
+        description: "Journal entry created successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Validation Error",
+        description: error instanceof Error ? error.message : "Failed to create journal entry",
+        variant: "destructive",
+      });
+      console.error('Create validated entry error:', error);
+    },
+  });
+};
+
+/**
+ * Hook for updating journal entry with validation
+ */
+export const useUpdateValidatedJournalEntry = () => {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, updates }: { id: string; updates: unknown }) =>
+      JournalAPI.validateAndUpdateEntry(id, updates),
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.entries(user!.id) });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.entry(id, user!.id) });
+      queryClient.invalidateQueries({ queryKey: ['journal-entries-paginated', user!.id] });
+      toast({
+        title: "Success",
+        description: "Journal entry updated successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Validation Error",
+        description: error instanceof Error ? error.message : "Failed to update journal entry",
+        variant: "destructive",
+      });
+      console.error('Update validated entry error:', error);
+    },
+  });
+};
