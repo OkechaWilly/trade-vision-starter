@@ -1,6 +1,12 @@
 {
   "name": "JournalIQ Dev Container",
-  "image": "mcr.microsoft.com/devcontainers/typescript-node:20-bullseye",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:18-bullseye",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "18",
+      "packageManager": "npm"
+    }
+  },
   "customizations": {
     "vscode": {
       "extensions": [
@@ -10,5 +16,5 @@
       ]
     }
   },
-  "postCreateCommand": "npm install"
+  "postCreateCommand": "echo 'source $HOME/.nvm/nvm.sh' >> $HOME/.bashrc && source $HOME/.bashrc"
 }
