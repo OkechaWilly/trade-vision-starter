@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import { Eye, EyeOff, Loader2, Mail } from "lucide-react";
 import { loginSchema, type LoginFormData } from "@/lib/validators/auth";
+import { securityLogger } from "@/features/security/SecurityLogger";
 
 export const LoginForm = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -32,12 +33,17 @@ export const LoginForm = () => {
       });
       
       if (error) {
+        await securityLogger.logLogin(data.email, false, { error: error.message });
         toast({
           title: "Sign in failed",
           description: error.message,
           variant: "destructive",
         });
       } else {
+        const { data: authData } = await supabase.auth.getUser();
+        if (authData.user) {
+          await securityLogger.logLogin(authData.user.id, true);
+        }
         navigate("/dashboard");
       }
     } catch (error) {

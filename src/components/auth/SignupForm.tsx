@@ -10,6 +10,7 @@ import { Progress } from "@/components/ui/progress";
 import { toast } from "@/hooks/use-toast";
 import { Eye, EyeOff, Loader2, Mail } from "lucide-react";
 import { signupSchema, type SignupFormData } from "@/lib/validators/auth";
+import { securityLogger } from "@/features/security/SecurityLogger";
 
 const getPasswordStrength = (password: string): number => {
   let strength = 0;
@@ -54,12 +55,17 @@ export const SignupForm = () => {
       });
       
       if (error) {
+        await securityLogger.logLogin(data.email, false, { error: error.message, action: 'signup' });
         toast({
           title: "Sign up failed",
           description: error.message,
           variant: "destructive",
         });
       } else {
+        const { data: authData } = await supabase.auth.getUser();
+        if (authData.user) {
+          await securityLogger.logLogin(authData.user.id, true, { action: 'signup' });
+        }
         toast({
           title: "Check your email",
           description: "We sent you a confirmation link.",

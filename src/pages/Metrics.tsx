@@ -1,9 +1,15 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/context/AuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { TrendingUp, TrendingDown, DollarSign, Target, Calendar, BarChart3 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { DatePickerWithRange } from "@/components/ui/date-range-picker";
+import { TrendingUp, TrendingDown, DollarSign, Target, Calendar, BarChart3, RefreshCw } from "lucide-react";
+import { useAnalytics } from "@/features/analytics/useAnalytics";
+import { AnalyticsCard } from "@/features/analytics/AnalyticsCard";
+import { DateRange } from "react-day-picker";
 
 interface Trade {
   pnl: number;
@@ -13,121 +19,108 @@ interface Trade {
 
 const Metrics = () => {
   const { user } = useAuth();
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
 
-  const { data: trades = [], isLoading } = useQuery({
-    queryKey: ["trades", user?.id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("trades")
-        .select("pnl, rr, date")
-        .eq("user_id", user?.id);
+  const dateRangeFilter = dateRange?.from && dateRange?.to 
+    ? { from: dateRange.from, to: dateRange.to }
+    : undefined;
 
-      if (error) throw error;
-      return data as Trade[];
-    },
-    enabled: !!user?.id,
-  });
+  const { data: analytics, isLoading, refetch } = useAnalytics(dateRangeFilter);
 
-  const metrics = {
-    totalTrades: trades.length,
-    winRate: trades.length > 0 ? (trades.filter(t => t.pnl > 0).length / trades.length) * 100 : 0,
-    totalPnL: trades.reduce((sum, t) => sum + t.pnl, 0),
-    averageWin: trades.filter(t => t.pnl > 0).length > 0 
-      ? trades.filter(t => t.pnl > 0).reduce((sum, t) => sum + t.pnl, 0) / trades.filter(t => t.pnl > 0).length 
-      : 0,
-    averageLoss: trades.filter(t => t.pnl < 0).length > 0
-      ? Math.abs(trades.filter(t => t.pnl < 0).reduce((sum, t) => sum + t.pnl, 0) / trades.filter(t => t.pnl < 0).length)
-      : 0,
-    profitFactor: trades.filter(t => t.pnl < 0).length > 0
-      ? Math.abs(trades.filter(t => t.pnl > 0).reduce((sum, t) => sum + t.pnl, 0) / trades.filter(t => t.pnl < 0).reduce((sum, t) => sum + t.pnl, 0))
-      : trades.filter(t => t.pnl > 0).length > 0 ? Infinity : 0,
-    maxDrawdown: 0, // Would need more complex calculation
-    activeDays: new Set(trades.map(t => t.date.split('T')[0])).size,
-  };
+  if (!analytics) {
+    return (
+      <div className="p-6">
+        <div className="text-center py-8">
+          <p className="text-muted-foreground">Loading analytics...</p>
+        </div>
+      </div>
+    );
+  }
 
   const metricCards = [
     {
       title: "Total Trades",
-      value: metrics.totalTrades.toString(),
-      description: "All time",
+      value: analytics.totalTrades,
+      description: dateRange ? "In selected period" : "All time",
       icon: BarChart3,
-      change: null,
+      format: "number" as const,
     },
     {
       title: "Win Rate",
-      value: `${metrics.winRate}%`,
+      value: analytics.winRate,
       description: "Success percentage",
       icon: Target,
-      change: null,
+      format: "percentage" as const,
     },
     {
       title: "Total P&L",
-      value: `$${metrics.totalPnL.toFixed(2)}`,
+      value: analytics.totalPnL,
       description: "Net profit/loss",
       icon: DollarSign,
-      change: metrics.totalPnL >= 0 ? "positive" : "negative",
+      format: "currency" as const,
     },
     {
-      title: "Average Win",
-      value: `$${metrics.averageWin.toFixed(2)}`,
-      description: "Per winning trade",
+      title: "Best Trade",
+      value: analytics.bestTrade,
+      description: "Highest single trade",
       icon: TrendingUp,
-      change: "positive",
+      format: "currency" as const,
     },
     {
-      title: "Average Loss",
-      value: `$${metrics.averageLoss.toFixed(2)}`,
-      description: "Per losing trade",
+      title: "Worst Trade",
+      value: analytics.worstTrade,
+      description: "Lowest single trade",
       icon: TrendingDown,
-      change: "negative",
+      format: "currency" as const,
     },
     {
-      title: "Active Days",
-      value: metrics.activeDays.toString(),
-      description: "Days with trades",
-      icon: Calendar,
-      change: null,
+      title: "Sharpe Ratio",
+      value: analytics.sharpeRatio.toFixed(2),
+      description: "Risk-adjusted return",
+      icon: BarChart3,
+      format: "number" as const,
     },
   ];
 
   return (
     <div className="p-6">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold">Trading Metrics</h1>
-        <p className="text-muted-foreground">
-          Comprehensive analysis of your trading performance
-        </p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold">Advanced Analytics</h1>
+            <p className="text-muted-foreground">
+              Comprehensive analysis of your trading performance
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <DatePickerWithRange
+              date={dateRange}
+              onDateChange={setDateRange}
+            />
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => refetch()}
+              disabled={isLoading}
+            >
+              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            </Button>
+          </div>
+        </div>
       </div>
 
-      {isLoading ? (
-        <div className="text-center py-8">
-          <p className="text-muted-foreground">Loading metrics...</p>
-        </div>
-      ) : (
-        <>
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
-            {metricCards.map((metric) => {
-              const Icon = metric.icon;
-              return (
-                <Card key={metric.title}>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">
-                      {metric.title}
-                    </CardTitle>
-                    <Icon className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">{metric.value}</div>
-                    <p className="text-xs text-muted-foreground">
-                      {metric.description}
-                    </p>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        </>
-      )}
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
+        {metricCards.map((metric) => (
+          <AnalyticsCard
+            key={metric.title}
+            title={metric.title}
+            value={metric.value}
+            description={metric.description}
+            icon={metric.icon}
+            format={metric.format}
+          />
+        ))}
+      </div>
 
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
@@ -141,16 +134,16 @@ const Metrics = () => {
             <div>
               <div className="flex items-center justify-between text-sm mb-2">
                 <span>Win Rate</span>
-                <span>{metrics.winRate}%</span>
+                <span>{analytics.winRate.toFixed(1)}%</span>
               </div>
-              <Progress value={metrics.winRate} className="h-2" />
+              <Progress value={analytics.winRate} className="h-2" />
             </div>
             <div>
               <div className="flex items-center justify-between text-sm mb-2">
                 <span>Profit Factor</span>
-                <span>{metrics.profitFactor.toFixed(2)}</span>
+                <span>{analytics.profitFactor.toFixed(2)}</span>
               </div>
-              <Progress value={Math.min(metrics.profitFactor * 50, 100)} className="h-2" />
+              <Progress value={Math.min(analytics.profitFactor * 50, 100)} className="h-2" />
             </div>
           </CardContent>
         </Card>
@@ -167,13 +160,19 @@ const Metrics = () => {
               <div className="flex justify-between items-center">
                 <span className="text-sm">Max Drawdown</span>
                 <span className="text-sm text-destructive">
-                  ${metrics.maxDrawdown.toFixed(2)}
+                  ${analytics.maxDrawdown.toFixed(2)}
                 </span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm">Profit Factor</span>
+                <span className="text-sm">Average RR</span>
                 <span className="text-sm">
-                  {metrics.profitFactor.toFixed(2)}
+                  {analytics.averageRR.toFixed(2)}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm">Active Days</span>
+                <span className="text-sm">
+                  {analytics.activeDays}
                 </span>
               </div>
             </div>

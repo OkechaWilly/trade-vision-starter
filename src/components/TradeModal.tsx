@@ -26,16 +26,17 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
+import { securityLogger } from "@/features/security/SecurityLogger";
 
 const tradeSchema = z.object({
   date: z.string().min(1, "Date is required"),
-  pair: z.string().min(1, "Trading pair is required"),
-  entry_price: z.string().min(1, "Entry price is required"),
-  exit_price: z.string().min(1, "Exit price is required"),
-  position_size: z.string().min(1, "Position size is required"),
-  risk: z.string().min(1, "Risk is required"),
-  reward: z.string().min(1, "Reward is required"),
-  notes: z.string().optional(),
+  pair: z.string().min(1, "Trading pair is required").regex(/^[A-Z]{3}\/[A-Z]{3}$/, "Invalid pair format (e.g., EUR/USD)"),
+  entry_price: z.string().min(1, "Entry price is required").refine((val) => !isNaN(Number(val)) && Number(val) > 0, "Must be a positive number"),
+  exit_price: z.string().min(1, "Exit price is required").refine((val) => !isNaN(Number(val)) && Number(val) > 0, "Must be a positive number"),
+  position_size: z.string().min(1, "Position size is required").refine((val) => !isNaN(Number(val)) && Number(val) > 0, "Must be a positive number"),
+  risk: z.string().min(1, "Risk is required").refine((val) => !isNaN(Number(val)) && Number(val) > 0, "Must be a positive number"),
+  reward: z.string().min(1, "Reward is required").refine((val) => !isNaN(Number(val)) && Number(val) > 0, "Must be a positive number"),
+  notes: z.string().max(500, "Notes must be less than 500 characters").optional(),
 });
 
 type TradeFormData = z.infer<typeof tradeSchema>;
@@ -89,6 +90,9 @@ export const TradeModal = ({ trigger }: TradeModalProps) => {
       });
 
       if (error) throw error;
+      
+      // Log security event
+      await securityLogger.logTradeAction(user?.id!, 'created');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["trades"] });

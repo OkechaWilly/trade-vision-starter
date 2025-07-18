@@ -3,6 +3,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LoginForm } from "./auth/LoginForm";
 import { SignupForm } from "./auth/SignupForm";
 import { SocialAuthButtons } from "./auth/SocialAuthButtons";
+import { PasswordResetForm } from "./auth/PasswordResetForm";
 
 export const AuthForm = () => {
 
@@ -16,9 +17,10 @@ export const AuthForm = () => {
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="login" className="w-full space-y-4">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="login">Login</TabsTrigger>
             <TabsTrigger value="signup">Sign Up</TabsTrigger>
+            <TabsTrigger value="reset">Reset</TabsTrigger>
           </TabsList>
           
           <TabsContent value="login">
@@ -27,6 +29,10 @@ export const AuthForm = () => {
           
           <TabsContent value="signup">
             <SignupForm />
+          </TabsContent>
+          
+          <TabsContent value="reset">
+            <PasswordResetForm />
           </TabsContent>
         </Tabs>
 
